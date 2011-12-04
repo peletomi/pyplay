@@ -3,7 +3,7 @@
 import os
 import fnmatch
 
-from string import lower, ljust
+from string import lower, ljust, upper
 
 def red(string):
     return '\033[91m' + string + '\033[0m'
@@ -13,14 +13,25 @@ def green(string):
 def max_checker_desc_len():
     return max([len(checker.desc) for checker in checkers])
 
+def matches_case(file, case):
+    if case == 'lower':
+        return lower(file) == file
+    else:
+        return upper(file) == file
+
 class NameChecker:
 
     errors = []
     desc = "File name check"
+    config = [] # { pattern: *.java, case: 'upper' } lower camel caps
+
+    def __init__(self, config):
+        self.config = config
 
     def check(self, file):
-        if lower(file) != file:
-            self.errors.append("file: " + file + "failed")
+        for conf in self.config:
+            if fnmatch.fnmatch(file, conf['pattern']) and not matches_case(file, conf['case']):
+                self.errors.append("file: " + file + "failed")
 
     def finished(self):
         pass
@@ -30,17 +41,25 @@ class FileExists:
     errors = []
     desc = "File exists check"
     found = False
+    config = [] # { pattern: *.java }
+
+    def __init__(self, config):
+        self.config = config
 
     def check(self, file):
-        if fnmatch.fnmatch(file, '*.conf'):
-            self.found = True
+        for conf in self.config:
+            if fnmatch.fnmatch(file, conf['pattern']):
+                self.found = True
 
     def finished(self):
         if not self.found:
             self.errors.append("No file found")
 
 
-checkers = [NameChecker(), FileExists()]
+checkers = [
+                NameChecker([{'pattern': '*.java', 'case': 'lower'}, {'pattern': '*.txt', 'case': 'lower'}]),
+                FileExists([{'pattern': '*.java'}])
+           ]
 
 # check stuff
 for root, dirs, files in os.walk('/tmp'):
